@@ -1,3 +1,4 @@
+require 'httparty'
 require 'json'
 require 'sinatra'
 
@@ -25,7 +26,14 @@ post '/register' do
   h_project = h_team[project].nil? ? h_team[project] = [] : h_team[project]
   h_project.push({ job_name: job_name, build_url: build_url })
 
-  puts jobs.to_json
+  outgoing_request = {
+    headers: {
+      'Content-Type' => 'application/json'
+    },
+    body: jobs.to_json
+  }
+
+  HTTParty.post("#{settings.socket_server_url}/status", outgoing_request)
 end
 
 private
