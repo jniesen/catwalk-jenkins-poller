@@ -2,9 +2,23 @@ require 'httparty'
 require 'json'
 require 'sinatra'
 
+class SocketServer
+  include HTTParty
+  headers 'Content-Type' => 'application/json'
+
+  def initialize(url)
+    self.class.base_uri(url)
+  end
+
+  def send_status(json_payload)
+    self.class.post("/status", { body: json_payload })
+  end
+end
+
 set :server, 'thin'
 set :port, ENV['CATWALK_POLLER_PORT']
 set :socket_server_url, ENV['CATWALK_SOCKET_SERVER_URL']
+set :socket_server, SocketServer.new(settings.socket_server_url)
 
 set :jobs, {}
 
@@ -26,14 +40,7 @@ post '/register' do
   h_project = h_team[project].nil? ? h_team[project] = [] : h_team[project]
   h_project.push({ job_name: job_name, build_url: build_url })
 
-  outgoing_request = {
-    headers: {
-      'Content-Type' => 'application/json'
-    },
-    body: jobs.to_json
-  }
-
-  HTTParty.post("#{settings.socket_server_url}/status", outgoing_request)
+  settings.socket_server.send_status(jobs.to_json)
 end
 
 private
@@ -42,3 +49,4 @@ def json_request?(request)
 
   request.accept?(json_request) || request.content_type == json_request
 end
+
